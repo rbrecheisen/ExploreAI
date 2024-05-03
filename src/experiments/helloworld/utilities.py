@@ -10,5 +10,6 @@ def get_gpu_info():
 
 def select_idle_gpu_device():
     gpu_info = get_gpu_info()
-    device_nr = min(gpu_info, key=lambda k: gpu_info[k])
-    return f'cuda:{device_nr}'
+    if gpu_info[0] <= gpu_info[1]:
+        return f'cuda:0'
+    return f'cuda:1'
