@@ -60,7 +60,7 @@ device = select_idle_gpu_device()
 device = 'cuda:0'
 print(device)
 print(torch.cuda.device_count())
-# model = MyModel().to(select_idle_gpu_device())
+# model = MyModel().to(device)
 # model = MyMultiLayerPerceptronForImaging().to(device)
 model = MyConvolutionalNetwork().to(device)
 # summary(model, input_size=(4, ))
