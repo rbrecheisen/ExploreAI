@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.nn as nn
 import torch.utils
 import torch.utils.data
 import torch.nn.functional as F
@@ -14,6 +15,39 @@ DATADIR = 'C:\\Users\\r.brecheisen\\Development\\Data'
 def show_image(image):
     image = image / 2 + 0.5
     plt.imshow(np.transpose(image.numpy(), (1, 2, 0)))
+
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=2, padding='same')
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=2, padding='same')
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=2, padding='same')
+        self.dropout1 = nn.Dropout(0.3)
+        self.fc1 = nn.Linear(64 * 4 * 4, 500)
+        self.dropout2 = nn.Dropout(0.4)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool(x)
+        x = F.relu(self.conv3(x))
+        x = self.pool(x)
+        x = self.dropout1(x)
+        x = torch.flatten(x, 1)  # Flatten all dimensions except batch
+        x = F.relu(self.fc1(x))
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+
+# Initialize the model
+model = SimpleCNN()
+
+# Print the model summary (You might want to use additional tools like torchsummary for detailed summary similar to Keras)
+print(model)
 
 
 if __name__ == '__main__':
