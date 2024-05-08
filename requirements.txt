@@ -2,3 +2,4 @@ pyside6
 torch
 torchvision
 torchsummary
+matplotlib
