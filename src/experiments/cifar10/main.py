@@ -116,13 +116,16 @@ if __name__ == '__main__':
     criterion = torch.nn.BCEWithLogitsLoss()
     num_epochs = 10
     best_val_acc = 0.0
+    best_val_loss = float('inf')
     epoch_elapsed_time = 0
     epoch_fixed_elapsed_time = 0
     batch_elapsed_time = 0
     batch_fixed_elapsed_time = 0
     final_epoch = None
+    patience = 5
 
     try:
+        patience_counter = 0
         for epoch in range(num_epochs):
             final_epoch = epoch
             print(f'starting epoch {epoch}...')
@@ -149,17 +152,27 @@ if __name__ == '__main__':
             avg_loss, accuracy = validate(model, validation_loader, criterion, device='cuda' if torch.cuda.is_available() else 'cpu') # Calculate validation accuracy
             print(f'{epoch}: validation loss: {avg_loss}, validation accuracy: {accuracy}')
 
-            if epoch % 5 == 0 or accuracy > best_val_acc: # Every 5 epochs, save model checkpoint and save best accuracy so far
+            if avg_loss < best_val_loss:
                 print(f'{epoch}: validation loss has improved, updating...')
-                if accuracy > best_val_acc:
-                    best_val_acc = accuracy
-                print(f'{epoch}: saving checkpoint...')
                 save_checkpoint(model, optimizer, epoch, f'checkpoint_epoch_{epoch}.pth')
+                best_val_loss = avg_loss
+                patience_counter = 0
+            else:
+                patience_counter + 1
 
             epoch_end_time = int(round(time.time() * 1000))
             epoch_elapsed_time = epoch_end_time - epoch_start_time
             if epoch_fixed_elapsed_time == 0:
                 epoch_fixed_elapsed_time = epoch_elapsed_time
+
+            if epoch_elapsed_time > 2 * epoch_fixed_elapsed_time:
+                print(f'Current epoch lasted longer than fixed epoch elapsed time + patience, quitting...')
+                raise KeyboardInterrupt()
+            
+            if patience_counter >= patience: # Validation loss has not improved over 5 epoch so we quit
+                print(f'{epoch}: saving checkpoint...')
+                save_checkpoint(model, optimizer, epoch, f'checkpoint_epoch_{epoch}.pth')
+                break
+            
     except KeyboardInterrupt:
-        # save_checkpoint(model, optimizer, final_epoch, f'checkpoint_epoch_{final_epoch}.pth')
         pass
