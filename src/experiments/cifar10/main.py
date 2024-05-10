@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 DATADIR = 'C:\\Users\\r.brecheisen\\Development\\Data'
+CHECKPOINT_DIR = 'C:\\Users\\r.brecheisen\\Development\\Data\\Checkpoints\\cifar10'
 
 
 def show_image(image):
@@ -154,7 +155,7 @@ if __name__ == '__main__':
 
             if avg_loss < best_val_loss:
                 print(f'{epoch}: validation loss has improved, updating...')
-                save_checkpoint(model, optimizer, epoch, f'checkpoint_epoch_{epoch}.pth')
+                save_checkpoint(model, optimizer, epoch, os.path.join(CHECKPOINT_DIR, f'checkpoint_epoch_{epoch}.pth'))
                 best_val_loss = avg_loss
                 patience_counter = 0
             else:
@@ -171,7 +172,7 @@ if __name__ == '__main__':
             
             if patience_counter >= patience: # Validation loss has not improved over 5 epoch so we quit
                 print(f'{epoch}: saving checkpoint...')
-                save_checkpoint(model, optimizer, epoch, f'checkpoint_epoch_{epoch}.pth')
+                save_checkpoint(model, optimizer, epoch, os.path.join(CHECKPOINT_DIR, f'checkpoint_epoch_{epoch}.pth'))
                 break
             
     except KeyboardInterrupt:
