@@ -1,11 +1,12 @@
 import os
 import torch
+import torch.optim
 import torch.nn as nn
 import torch.utils
 import torch.utils.data
 import torch.nn.functional as F
 import torchvision
-
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -42,12 +43,36 @@ class SimpleCNN(nn.Module):
         x = self.dropout2(x)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+    
 
-# Initialize the model
-model = SimpleCNN()
+def save_checkpoint(model, optimizer, epoch, path):
+    print(f'saving checkpoint for epoch {epoch} to {path}...')
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, path)
 
-# Print the model summary (You might want to use additional tools like torchsummary for detailed summary similar to Keras)
-print(model)
+
+def validate(model, val_loader, criterion, device='cpu'):
+    print(f'calculating validation loss and accuracy (device: {device})')
+    model.eval()
+    total_loss = 0
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            labels_onehot = F.one_hot(labels, num_classes=10).float()
+            outputs = model(images)
+            loss = criterion(outputs, labels_onehot)
+            total_loss += loss.item()
+            predicted = outputs.argmax(dim=1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    avg_loss = total_loss / len(val_loader)
+    accuracy = correct / total
+    return avg_loss, accuracy
 
 
 if __name__ == '__main__':
@@ -86,5 +111,55 @@ if __name__ == '__main__':
     #     show_image(images[idx])
     # plt.show()
 
-    for images, labels in training_loader:                  # Iterates over batches of images, not single images
-        labels_onehot = F.one_hot(labels, num_classes=10)
+    model = SimpleCNN()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    criterion = torch.nn.BCEWithLogitsLoss()
+    num_epochs = 10
+    best_val_acc = 0.0
+    epoch_elapsed_time = 0
+    epoch_fixed_elapsed_time = 0
+    batch_elapsed_time = 0
+    batch_fixed_elapsed_time = 0
+    final_epoch = None
+
+    try:
+        for epoch in range(num_epochs):
+            final_epoch = epoch
+            print(f'starting epoch {epoch}...')
+            epoch_start_time = int(round(time.time() * 1000))
+
+            model.train() # Set model to training state
+            i = 0
+            for images, labels in training_loader: # Iterate over batches of images and labels in training data
+                batch_start_time = int(round(time.time() * 1000))
+
+                labels_onehot = F.one_hot(labels, num_classes=10).float() # One-hot encode the labels
+                optimizer.zero_grad() # Reset gradient to zero for each batch
+                outputs = model(images) # Do forward pass of images through model
+                loss = F.binary_cross_entropy_with_logits(outputs, labels_onehot) # Calculate loss
+                loss.backward() # Do back-propagation to update weights
+                optimizer.step() # Take next step along calculated gradients
+                batch_stop_time = int(round(time.time() * 1000))
+                batch_elapsed_time = batch_stop_time - batch_start_time
+                if batch_fixed_elapsed_time == 0:
+                    batch_fixed_elapsed_time = batch_elapsed_time
+                i += 1
+
+            print(f'{epoch}: calculating validation loss...')
+            avg_loss, accuracy = validate(model, validation_loader, criterion, device='cuda' if torch.cuda.is_available() else 'cpu') # Calculate validation accuracy
+            print(f'{epoch}: validation loss: {avg_loss}, validation accuracy: {accuracy}')
+
+            if epoch % 5 == 0 or accuracy > best_val_acc: # Every 5 epochs, save model checkpoint and save best accuracy so far
+                print(f'{epoch}: validation loss has improved, updating...')
+                if accuracy > best_val_acc:
+                    best_val_acc = accuracy
+                print(f'{epoch}: saving checkpoint...')
+                save_checkpoint(model, optimizer, epoch, f'checkpoint_epoch_{epoch}.pth')
+
+            epoch_end_time = int(round(time.time() * 1000))
+            epoch_elapsed_time = epoch_end_time - epoch_start_time
+            if epoch_fixed_elapsed_time == 0:
+                epoch_fixed_elapsed_time = epoch_elapsed_time
+    except KeyboardInterrupt:
+        # save_checkpoint(model, optimizer, final_epoch, f'checkpoint_epoch_{final_epoch}.pth')
+        pass
