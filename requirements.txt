@@ -1,5 +1,9 @@
 pyside6
+#### pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu118
+#### Only after installing it like this does torch.cuda.is_available() return True
 torch
 torchvision
+torchaudio
+####
 torchsummary
 matplotlib
